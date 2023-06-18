@@ -1,0 +1,17 @@
+FROM jenkins/ssh-agent:latest
+
+# Install Node JS
+RUN apt-get update
+RUN apt-get -y install jq 
+RUN apt-get install -y curl
+RUN curl -s https://deb.nodesource.com/setup_18.x | bash
+RUN sudo apt install nodejs -y
+RUN npm install -g @angular/cli
+
+
+
+
+RUN mkdir -p /home/jenkins/.ssh
+RUN echo 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCpzjBCQYFvDSnAfe8IRQMc1TEKuucQFirPG+7aZu+2vVPmDZZtZiRy/ixhz887YvKr6lfQnyvjfXtpPkSaca7wVDWrKhdQEfmWRzb1vqTasOy917SYulEAA53F73wGBJnT1D15LBhkqMiJVxtVnVweOpnh+xpt/r+8skH6w1pygB0XPgKcdqdCFVanmo8m0EDMwsCVc6JwFSLVo4rlbGbVs8cHhtuFCYB+zKr995Qw+5pxlpAgOOzBGvjZnAmUj70dwTpgEUzctfPbpw9jTV+h4RSPT22BJcNgQgVUTmBeZnDfo5DrKzKbiZrlGYBXeBxfILDxmKFvrL6WHur399R1 jenkins@c09873bb7530' > /home/jenkins/.ssh/authorized_keys 
+
+EXPOSE 22

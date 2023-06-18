@@ -1,0 +1,21 @@
+FROM jenkins/ssh-agent:latest
+
+# Install .NET V6
+RUN apt-get update
+RUN apt-get -y install dpkg
+RUN apt-get -y install wget
+RUN apt-get -y install jq 
+RUN wget https://packages.microsoft.com/config/debian/11/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
+RUN dpkg -i packages-microsoft-prod.deb
+
+RUN apt-get install curl
+
+RUN mkdir -p /home/jenkins/.ssh
+RUN echo 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCpzjBCQYFvDSnAfe8IRQMc1TEKuucQFirPG+7aZu+2vVPmDZZtZiRy/ixhz887YvKr6lfQnyvjfXtpPkSaca7wVDWrKhdQEfmWRzb1vqTasOy917SYulEAA53F73wGBJnT1D15LBhkqMiJVxtVnVweOpnh+xpt/r+8skH6w1pygB0XPgKcdqdCFVanmo8m0EDMwsCVc6JwFSLVo4rlbGbVs8cHhtuFCYB+zKr995Qw+5pxlpAgOOzBGvjZnAmUj70dwTpgEUzctfPbpw9jTV+h4RSPT22BJcNgQgVUTmBeZnDfo5DrKzKbiZrlGYBXeBxfILDxmKFvrL6WHur399R1 jenkins@c09873bb7530' > /home/jenkins/.ssh/authorized_keys 
+
+EXPOSE 22
+
+RUN apt-get update && \
+    apt-get install -y dotnet-sdk-6.0
+
+

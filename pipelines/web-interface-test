@@ -1,0 +1,69 @@
+pipeline {
+    agent {
+        node {
+            label 'nodejs-test'
+        }
+    }
+  
+    stages {
+        stage('Verify Gitlab Action Type') {
+            steps {
+                script {
+                    if (sh(script: '''
+                                #!/bin/bash
+                                set -x
+                                mrState=$(curl -X GET -H "Private-Token: ${GITLAB_TOKEN}" \
+                                    http://193.226.9.136:8090/api/v4/projects/${gitlabMergeRequestTargetProjectId}/merge_requests/${gitlabMergeRequestIid}\
+                                    | jq -r '.state')
+                                echo "Merge Request ${gitlabMergeRequestIid} status is ${mrState}"
+                                [ "${mrState}" = "opened" ]
+                                ''', returnStatus: true) == 1) {
+                        error('Merge request status is not "opened". Aborting...')
+                    }
+                }
+            }
+        }
+        stage('Cleanup workspace') {
+            steps {
+                sh '''#!/bin/bash
+                    set -x
+                    env
+                    rm -rf *
+                '''
+            }
+        }
+        stage('Get code') {
+            steps {
+                sh '''#!/bin/bash
+                    set -x
+                    cd ${WORKSPACE}
+                    #git clone jenkins@193.226.9.136:${gitlabTargetRepoSshUrl#*:}
+                    git clone http://193.226.9.136:8090/${gitlabTargetRepoSshUrl#*:}
+                    cd ${WORKSPACE}/${gitlabTargetRepoName}
+                    git fetch origin
+                    git checkout -b ${gitlabBranch} origin/${gitlabBranch}
+                '''
+            }
+        }
+        stage('Compile interface') {
+            steps {
+                sh '''#!/bin/bash
+                    set -x
+					exit 0
+                    cd ${WORKSPACE}/${gitlabTargetRepoName}/src/ElegantStore.Web
+                    npm install
+                    ng build
+                '''
+            }
+        }
+  }
+  
+	post {
+		success {
+			updateGitlabCommitStatus name: 'jenkins', state: 'success'
+		}
+		failure {
+			updateGitlabCommitStatus name: 'jenkins', state: 'failed'
+		}
+	}
+}

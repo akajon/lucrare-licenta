@@ -1,0 +1,82 @@
+pipeline {
+    agent {
+        node {
+            label 'nodejs-deploy'
+        }
+    }
+  
+	stages {
+        stage('Verify Gitlab Action Type') {
+            steps {
+                script {
+                    if (sh(script: '''
+                                #!/bin/bash
+                                set -x
+                                mrState=$(curl -X GET -H "Private-Token: ${GITLAB_TOKEN}" \
+                                    http://193.226.9.136:8090/api/v4/projects/${gitlabMergeRequestTargetProjectId}/merge_requests/${gitlabMergeRequestIid}\
+                                    | jq -r '.state')
+                                echo "Merge Request ${gitlabMergeRequestIid} status is ${mrState}"
+                                [ "${mrState}" = "merged" ]
+                                ''', returnStatus: true) == 1) {
+                        error('Merge request status is not "merged". Aborting...')
+                    }
+                }
+            }
+        }
+        stage('Cleanup workspace') {
+            steps {
+                sh '''#!/bin/bash
+                    set -x
+                    cd ${WORKSPACE}
+                    rm -rf *
+                '''
+            }
+        }
+        stage('Stop current interface') {
+            steps {
+                sh '''#!/bin/bash
+                    set -x
+                     kill $(ps aux | grep 'ng serve' | awk '{print $2}') || true
+                '''
+            }
+        }
+        stage('Get binary') {
+            steps {
+                sh '''#!/bin/bash
+                    exit 0
+                    set -x
+                    binary_name="web-store-mr${gitlabMergeRequestId}-${gitlabMergeRequestLastCommit}-api.tar.gz"
+                    target_name="web-store-mr${gitlabMergeRequestId}-${gitlabMergeRequestLastCommit}-api"
+                    cd ${WORKSPACE}
+                    curl -v --user 'jenkinsuser':"${ARTIFACTORY_PASS}" -X GET \
+                        "http://193.226.9.136:8100/artifactory/web-store/MR-${gitlabMergeRequestId}/${gitlabMergeRequestLastCommit}/${binary_name}" \
+                        --output ${binary_name}
+                    mkdir -p ${target_name}
+                    tar -xf ${binary_name} -C ${target_name}
+                '''
+            }
+        }
+        stage('Start interface') {
+            steps {
+                sh '''#!/bin/bash
+                    set -x
+                    git clone http://193.226.9.136:8090/${gitlabTargetRepoSshUrl#*:}
+                    cd ${WORKSPACE}/${gitlabTargetRepoName:=web-store}
+                    cd ${WORKSPACE}/${gitlabTargetRepoName:=web-store}/src/ElegantStore.Web
+                    npm install
+                    JENKINS_NODE_COOKIE=dontKillMe ng serve > ${WORKSPACE}/output.log 2>&1 &
+                    ps -aux
+                '''
+            }
+        }
+	}
+  
+	post {
+		success {
+			updateGitlabCommitStatus name: 'jenkins', state: 'success'
+        }
+        failure {
+			updateGitlabCommitStatus name: 'jenkins', state: 'failed'
+        }
+	}
+}
